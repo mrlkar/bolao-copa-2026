@@ -54,6 +54,17 @@ export default function PainelPage() {
   >({});
   const [palpitesPublicos, setPalpitesPublicos] = useState<PalpitePublico[]>([]);
   const [pontuacoes, setPontuacoes] = useState<Pontuacao[]>([]);
+  const ranking = [...participantes].sort((a, b) => {
+  if ((b.pontos || 0) !== (a.pontos || 0)) {
+    return (b.pontos || 0) - (a.pontos || 0);
+  }
+
+  if ((b.cravadas || 0) !== (a.cravadas || 0)) {
+    return (b.cravadas || 0) - (a.cravadas || 0);
+  }
+
+  return a.id - b.id;
+});
   const [mensagem, setMensagem] = useState("");
 
   useEffect(() => {
@@ -214,7 +225,8 @@ export default function PainelPage() {
     localStorage.removeItem("participante");
     router.push("/login");
   }
-
+const minhaPosicao =
+  ranking.findIndex((p) => p.id === participante?.id) + 1;
   if (!participante) {
     return (
       <main className="min-h-screen bg-slate-100 p-8">
@@ -252,7 +264,33 @@ export default function PainelPage() {
           <p>
             <strong>Cravadas:</strong> {participante.cravadas ?? 0}
           </p>
+<p>
+  <strong>Posição Atual:</strong> 🏆 {minhaPosicao}º lugar
+</p>
+<div className="mt-6 bg-yellow-50 border border-yellow-300 rounded p-4">
+  <h2 className="font-bold text-lg mb-2">
+    🏆 Ranking Geral
+  </h2>
 
+  <div className="space-y-1">
+    {ranking.slice(0, 10).map((p, index) => (
+      <div
+        key={p.id}
+        className={
+          p.id === participante.id
+            ? "font-bold text-blue-700"
+            : ""
+        }
+      >
+        {index + 1}º - {p.apelido || p.nome_completo}
+        {" — "}
+        {p.pontos || 0} pts
+        {" — "}
+        {p.cravadas || 0} cravadas
+      </div>
+    ))}
+  </div>
+</div>
           <button
             onClick={sair}
             className="mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded"
