@@ -19,6 +19,12 @@ type Jogo = {
   time_a: string;
   time_b: string;
   data_hora: string;
+  gols_a: number | null;
+  gols_b: number | null;
+  encerrado: boolean;
+  teve_penaltis: boolean | null;
+  penaltis_a: number | null;
+  penaltis_b: number | null;
 };
 
 type PalpitePublico = {
@@ -26,6 +32,8 @@ type PalpitePublico = {
   jogo_id: number;
   gols_time_a: number;
   gols_time_b: number;
+  palpite_penaltis_a: number | null;
+  palpite_penaltis_b: number | null;
 };
 
 export default function PainelPage() {
@@ -34,7 +42,9 @@ export default function PainelPage() {
   const [participante, setParticipante] = useState<Participante | null>(null);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [jogos, setJogos] = useState<Jogo[]>([]);
-  const [palpites, setPalpites] = useState<Record<number, { a: string; b: string }>>({});
+  const [palpites, setPalpites] = useState<
+    Record<number, { a: string; b: string; penA: string; penB: string }>
+  >({});
   const [palpitesPublicos, setPalpitesPublicos] = useState<PalpitePublico[]>([]);
   const [mensagem, setMensagem] = useState("");
 
@@ -48,7 +58,6 @@ export default function PainelPage() {
 
     const participanteLogado = JSON.parse(dados);
     setParticipante(participanteLogado);
-
     carregarDados(participanteLogado.id);
   }, [router]);
 
@@ -62,15 +71,16 @@ export default function PainelPage() {
       .from("participantes")
       .select("*");
 
-    const { data: todosPalpites } = await supabase
-      .from("palpites")
-      .select("*");
+    const { data: todosPalpites } = await supabase.from("palpites").select("*");
 
     setJogos(dadosJogos || []);
     setParticipantes(todosParticipantes || []);
     setPalpitesPublicos(todosPalpites || []);
 
-    const meusPalpites: Record<number, { a: string; b: string }> = {};
+    const meusPalpites: Record<
+      number,
+      { a: string; b: string; penA: string; penB: string }
+    > = {};
 
     (todosPalpites || [])
       .filter((p) => p.participante_id === participanteId)
@@ -78,10 +88,22 @@ export default function PainelPage() {
         meusPalpites[p.jogo_id] = {
           a: String(p.gols_time_a),
           b: String(p.gols_time_b),
+          penA:
+            p.palpite_penaltis_a === null || p.palpite_penaltis_a === undefined
+              ? ""
+              : String(p.palpite_penaltis_a),
+          penB:
+            p.palpite_penaltis_b === null || p.palpite_penaltis_b === undefined
+              ? ""
+              : String(p.palpite_penaltis_b),
         };
       });
 
     setPalpites(meusPalpites);
+  }
+
+  function faseEliminatoria(fase: string) {
+    return fase !== "Fase de Grupos";
   }
 
   function jogoFechado(dataHora: string) {
@@ -90,11 +112,18 @@ export default function PainelPage() {
     return Date.now() >= fechamento;
   }
 
-  function alterarPalpite(jogoId: number, campo: "a" | "b", valor: string) {
+  function alterarPalpite(
+    jogoId: number,
+    campo: "a" | "b" | "penA" | "penB",
+    valor: string
+  ) {
     setPalpites((atual) => ({
       ...atual,
       [jogoId]: {
-        ...atual[jogoId],
+        a: atual[jogoId]?.a || "",
+        b: atual[jogoId]?.b || "",
+        penA: atual[jogoId]?.penA || "",
+        penB: atual[jogoId]?.penB || "",
         [campo]: valor,
       },
     }));
@@ -117,14 +146,26 @@ export default function PainelPage() {
       return;
     }
 
+    const precisaPenaltis = faseEliminatoria(jogo.fase);
+
+    if (precisaPenaltis && (palpite.penA === "" || palpite.penB === "")) {
+      setMensagem("Informe também o palpite dos pênaltis.");
+      return;
+    }
+
     const { error } = await supabase.from("palpites").upsert(
       {
         participante_id: participante.id,
         jogo_id: jogo.id,
+
         gols_time_a: Number(palpite.a),
         gols_time_b: Number(palpite.b),
+
         palpite_a: Number(palpite.a),
         palpite_b: Number(palpite.b),
+
+        palpite_penaltis_a: precisaPenaltis ? Number(palpite.penA) : null,
+        palpite_penaltis_b: precisaPenaltis ? Number(palpite.penB) : null,
       },
       {
         onConflict: "participante_id,jogo_id",
@@ -210,6 +251,7 @@ export default function PainelPage() {
               {jogos.map((jogo) => {
                 const fechado = jogoFechado(jogo.data_hora);
                 const listaPalpites = palpitesDoJogo(jogo.id);
+                const ehEliminatorio = faseEliminatoria(jogo.fase);
 
                 return (
                   <div key={jogo.id} className="border rounded-lg p-4">
@@ -228,7 +270,16 @@ export default function PainelPage() {
                         : "🟢 Palpites abertos até 1 minuto antes do jogo"}
                     </p>
 
-                    <div className="flex items-center gap-2">
+                    {jogo.encerrado && (
+                      <p className="mb-3 font-medium">
+                        Resultado: {jogo.gols_a} x {jogo.gols_b}
+                        {jogo.teve_penaltis
+                          ? ` — Pênaltis: ${jogo.penaltis_a} x ${jogo.penaltis_b}`
+                          : ""}
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 flex-wrap">
                       <input
                         type="number"
                         min="0"
@@ -264,6 +315,41 @@ export default function PainelPage() {
                       </button>
                     </div>
 
+                    {ehEliminatorio && !fechado && (
+                      <div className="mt-4 bg-slate-50 rounded p-4">
+                        <p className="font-medium mb-2">
+                          Informe também seu palpite para eventual decisão por
+                          pênaltis:
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-20 border rounded p-2 text-center"
+                            placeholder="0"
+                            value={palpites[jogo.id]?.penA || ""}
+                            onChange={(e) =>
+                              alterarPalpite(jogo.id, "penA", e.target.value)
+                            }
+                          />
+
+                          <span>x</span>
+
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-20 border rounded p-2 text-center"
+                            placeholder="0"
+                            value={palpites[jogo.id]?.penB || ""}
+                            onChange={(e) =>
+                              alterarPalpite(jogo.id, "penB", e.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {fechado && (
                       <div className="mt-5 bg-slate-50 rounded p-4">
                         <h3 className="font-semibold mb-2">
@@ -290,8 +376,13 @@ export default function PainelPage() {
                                   <td className="py-2">
                                     {nomeParticipante(p.participante_id)}
                                   </td>
+
                                   <td className="py-2">
                                     {p.gols_time_a} x {p.gols_time_b}
+                                    {p.palpite_penaltis_a !== null &&
+                                    p.palpite_penaltis_b !== null
+                                      ? ` — Pênaltis: ${p.palpite_penaltis_a} x ${p.palpite_penaltis_b}`
+                                      : ""}
                                   </td>
                                 </tr>
                               ))}
