@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Participante = {
@@ -35,6 +36,7 @@ type Palpite = {
 };
 
 export default function AdminPage() {
+    const router = useRouter();
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [jogos, setJogos] = useState<Jogo[]>([]);
   const [fase, setFase] = useState("Fase de Grupos");
@@ -277,8 +279,22 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    carregarDados();
-  }, []);
+  const dados = localStorage.getItem("participante");
+
+  if (!dados) {
+    router.push("/login");
+    return;
+  }
+
+  const participante = JSON.parse(dados);
+
+  if (!participante.administrador) {
+    router.push("/painel");
+    return;
+  }
+
+  carregarDados();
+}, [router]);
 
   const participantesPagos = participantes.filter((p) => p.pago);
   const jogosEncerrados = jogos.filter((j) => j.encerrado);

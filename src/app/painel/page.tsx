@@ -131,7 +131,12 @@ export default function PainelPage() {
     setMensagem("");
 
     if (!participante) return;
-
+if (!participante.pago) {
+  setMensagem(
+    "Seu pagamento ainda não foi confirmado. Você não pode registrar palpites."
+  );
+  return;
+}
     if (jogoFechado(jogo.data_hora)) {
       setMensagem("Palpites encerrados para este jogo.");
       return;
@@ -390,6 +395,17 @@ export default function PainelPage() {
 
           <p><strong>Olá,</strong> {participante.apelido || participante.nome_completo}!</p>
           <p><strong>Status do pagamento:</strong> {participante.pago ? "✅ Confirmado" : "⏳ Aguardando confirmação"}</p>
+          {!participante.pago && (
+  <div className="mt-4 bg-red-50 border border-red-300 rounded p-4">
+    <p className="font-semibold text-red-700">
+      ⚠️ Seu pagamento ainda não foi confirmado.
+    </p>
+
+    <p className="text-red-700">
+      Os palpites somente serão liberados após a confirmação do pagamento.
+    </p>
+  </div>
+)}
           <p><strong>Pontos:</strong> {participante.pontos ?? 0}</p>
           <p><strong>Cravadas:</strong> {participante.cravadas ?? 0}</p>
           <p><strong>Posição Atual:</strong> {minhaPosicao > 0 ? `🏆 ${minhaPosicao}º lugar` : "Ainda sem posição"}</p>
