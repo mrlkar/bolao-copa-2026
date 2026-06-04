@@ -57,7 +57,11 @@ export default function AdminPage() {
   >({});
 
   const [mensagem, setMensagem] = useState("");
+const participantesPagos = participantes.filter((p) => p.pago);
 
+const jogosEncerrados = jogos.filter((j) => j.encerrado);
+
+const arrecadacao = participantesPagos.length * 50;
   async function carregarDados() {
     const { data: dadosParticipantes } = await supabase
       .from("participantes")
@@ -348,6 +352,57 @@ export default function AdminPage() {
     <main className="min-h-screen bg-slate-100 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <h1 className="text-4xl font-bold">🛠️ Painel Administrativo</h1>
+        <section className="grid md:grid-cols-3 gap-4">
+  <div className="bg-white rounded-xl shadow p-6">
+    <h3 className="font-bold text-lg">
+      👥 Participantes
+    </h3>
+
+    <p>
+      Total: {participantes.length}
+    </p>
+
+    <p>
+      Pagos: {participantesPagos.length}
+    </p>
+
+    <p>
+      Pendentes: {participantes.length - participantesPagos.length}
+    </p>
+  </div>
+
+  <div className="bg-white rounded-xl shadow p-6">
+    <h3 className="font-bold text-lg">
+      ⚽ Jogos
+    </h3>
+
+    <p>
+      Total: {jogos.length}
+    </p>
+
+    <p>
+      Encerrados: {jogosEncerrados.length}
+    </p>
+
+    <p>
+      Pendentes: {jogos.length - jogosEncerrados.length}
+    </p>
+  </div>
+
+  <div className="bg-white rounded-xl shadow p-6">
+    <h3 className="font-bold text-lg">
+      💰 Financeiro
+    </h3>
+
+    <p>
+      Arrecadação:
+    </p>
+
+    <p className="text-2xl font-bold text-green-700">
+      R$ {arrecadacao.toLocaleString("pt-BR")}
+    </p>
+  </div>
+</section>
 
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-2xl font-semibold mb-4">Participantes</h2>
