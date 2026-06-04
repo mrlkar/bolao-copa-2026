@@ -20,6 +20,9 @@ type Jogo = {
   gols_a: number | null;
   gols_b: number | null;
   encerrado: boolean;
+  teve_penaltis: boolean | null;
+  penaltis_a: number | null;
+  penaltis_b: number | null;
 };
 
 type Palpite = {
@@ -27,28 +30,55 @@ type Palpite = {
   jogo_id: number;
   gols_time_a: number;
   gols_time_b: number;
+  palpite_penaltis_a: number | null;
+  palpite_penaltis_b: number | null;
 };
 
 export default function AdminPage() {
   const [participantes, setParticipantes] = useState<Participante[]>([]);
   const [jogos, setJogos] = useState<Jogo[]>([]);
+
   const [fase, setFase] = useState("Fase de Grupos");
   const [timeA, setTimeA] = useState("");
   const [timeB, setTimeB] = useState("");
   const [dataHora, setDataHora] = useState("");
-  const [resultados, setResultados] = useState<Record<number, { a: string; b: string }>>({});
+
+  const [resultados, setResultados] = useState<
+    Record<
+      number,
+      {
+        a: string;
+        b: string;
+        tevePenaltis: boolean;
+        penA: string;
+        penB: string;
+      }
+    >
+  >({});
+
   const [mensagem, setMensagem] = useState("");
 
   async function carregarDados() {
-    const { data: dadosParticipantes } = await supabase.from("participantes").select("*").order("id");
-    const { data: dadosJogos } = await supabase.from("jogos").select("*").order("data_hora");
+    const { data: dadosParticipantes } = await supabase
+      .from("participantes")
+      .select("*")
+      .order("id");
+
+    const { data: dadosJogos } = await supabase
+      .from("jogos")
+      .select("*")
+      .order("data_hora");
 
     setParticipantes(dadosParticipantes || []);
     setJogos(dadosJogos || []);
   }
 
   async function alternarPagamento(id: number, pagoAtual: boolean) {
-    await supabase.from("participantes").update({ pago: !pagoAtual }).eq("id", id);
+    await supabase
+      .from("participantes")
+      .update({ pago: !pagoAtual })
+      .eq("id", id);
+
     carregarDados();
   }
 
@@ -67,6 +97,7 @@ export default function AdminPage() {
         time_b: timeB,
         data_hora: dataHora,
         encerrado: false,
+        teve_penaltis: false,
       },
     ]);
 
@@ -83,13 +114,27 @@ export default function AdminPage() {
   }
 
   function regraPontuacao(fase: string) {
-    if (fase === "Fase de Grupos") return { cravada: 4, vencedorGol: 3, vencedor: 2, empateErradoGol: 1 };
-    if (fase === "2ª Fase") return { cravada: 5, vencedorGol: 4, vencedor: 2, empateErradoGol: 1 };
-    if (fase === "Oitavas de Final") return { cravada: 6, vencedorGol: 4, vencedor: 3, empateErradoGol: 1 };
-    if (fase === "Quartas de Final") return { cravada: 7, vencedorGol: 5, vencedor: 3, empateErradoGol: 2 };
-    if (fase === "Semifinais") return { cravada: 8, vencedorGol: 6, vencedor: 4, empateErradoGol: 2 };
-    if (fase === "Disputa de 3º Lugar") return { cravada: 8, vencedorGol: 6, vencedor: 4, empateErradoGol: 2 };
-    if (fase === "Final") return { cravada: 10, vencedorGol: 7, vencedor: 5, empateErradoGol: 3 };
+    if (fase === "Fase de Grupos")
+      return { cravada: 4, vencedorGol: 3, vencedor: 2, empateErradoGol: 1 };
+
+    if (fase === "2ª Fase")
+      return { cravada: 5, vencedorGol: 4, vencedor: 2, empateErradoGol: 1 };
+
+    if (fase === "Oitavas de Final")
+      return { cravada: 6, vencedorGol: 4, vencedor: 3, empateErradoGol: 1 };
+
+    if (fase === "Quartas de Final")
+      return { cravada: 7, vencedorGol: 5, vencedor: 3, empateErradoGol: 2 };
+
+    if (fase === "Semifinais")
+      return { cravada: 8, vencedorGol: 6, vencedor: 4, empateErradoGol: 2 };
+
+    if (fase === "Disputa de 3º Lugar")
+      return { cravada: 8, vencedorGol: 6, vencedor: 4, empateErradoGol: 2 };
+
+    if (fase === "Final")
+      return { cravada: 10, vencedorGol: 7, vencedor: 5, empateErradoGol: 3 };
+
     return { cravada: 4, vencedorGol: 3, vencedor: 2, empateErradoGol: 1 };
   }
 
@@ -99,7 +144,12 @@ export default function AdminPage() {
     return "E";
   }
 
-  function calcularPontuacao(jogo: Jogo, palpite: Palpite, golsA: number, golsB: number) {
+  function calcularPontuacaoJogo(
+    jogo: Jogo,
+    palpite: Palpite,
+    golsA: number,
+    golsB: number
+  ) {
     const regra = regraPontuacao(jogo.fase);
 
     const pa = palpite.gols_time_a;
@@ -120,11 +170,49 @@ export default function AdminPage() {
       return { pontos: regra.vencedor, cravada: false };
     }
 
-    if (tipoReal !== "E" && tipoPalpite === "E" && (pa === golsA || pb === golsB)) {
+    if (
+      tipoReal !== "E" &&
+      tipoPalpite === "E" &&
+      (pa === golsA || pb === golsB)
+    ) {
       return { pontos: regra.empateErradoGol, cravada: false };
     }
 
     return { pontos: 0, cravada: false };
+  }
+
+  function calcularPontuacaoPenaltis(
+    palpite: Palpite,
+    penaltisA: number,
+    penaltisB: number
+  ) {
+    const pa = palpite.palpite_penaltis_a;
+    const pb = palpite.palpite_penaltis_b;
+
+    if (pa === null || pb === null || pa === undefined || pb === undefined) {
+      return 0;
+    }
+
+    const vencedorReal = resultadoTipo(penaltisA, penaltisB);
+    const vencedorPalpite = resultadoTipo(pa, pb);
+
+    if (vencedorReal === "E" || vencedorPalpite === "E") {
+      return 0;
+    }
+
+    if (vencedorReal !== vencedorPalpite) {
+      return 0;
+    }
+
+    if (pa === penaltisA && pb === penaltisB) {
+      return 3;
+    }
+
+    if (pa === penaltisA || pb === penaltisB) {
+      return 2;
+    }
+
+    return 1;
   }
 
   async function salvarResultado(jogo: Jogo) {
@@ -132,20 +220,45 @@ export default function AdminPage() {
 
     const resultado = resultados[jogo.id];
 
-    if (!resultado || resultado.a === "" || resultado.b === "") {
+    const golsA = resultado?.a !== undefined ? resultado.a : String(jogo.gols_a ?? "");
+    const golsB = resultado?.b !== undefined ? resultado.b : String(jogo.gols_b ?? "");
+
+    if (golsA === "" || golsB === "") {
       setMensagem("Informe os dois placares do resultado.");
       return;
     }
 
-    const golsA = Number(resultado.a);
-    const golsB = Number(resultado.b);
+    const tevePenaltis = resultado?.tevePenaltis ?? jogo.teve_penaltis ?? false;
+
+    const penA =
+      resultado?.penA !== undefined
+        ? resultado.penA
+        : String(jogo.penaltis_a ?? "");
+
+    const penB =
+      resultado?.penB !== undefined
+        ? resultado.penB
+        : String(jogo.penaltis_b ?? "");
+
+    if (tevePenaltis && (penA === "" || penB === "")) {
+      setMensagem("Informe o placar dos pênaltis.");
+      return;
+    }
+
+    const golsANumero = Number(golsA);
+    const golsBNumero = Number(golsB);
+    const penANumero = tevePenaltis ? Number(penA) : null;
+    const penBNumero = tevePenaltis ? Number(penB) : null;
 
     await supabase
       .from("jogos")
       .update({
-        gols_a: golsA,
-        gols_b: golsB,
+        gols_a: golsANumero,
+        gols_b: golsBNumero,
         encerrado: true,
+        teve_penaltis: tevePenaltis,
+        penaltis_a: penANumero,
+        penaltis_b: penBNumero,
       })
       .eq("id", jogo.id);
 
@@ -155,14 +268,24 @@ export default function AdminPage() {
       .eq("jogo_id", jogo.id);
 
     for (const palpite of (palpitesDoJogo || []) as Palpite[]) {
-      const calculo = calcularPontuacao(jogo, palpite, golsA, golsB);
+      const pontosJogo = calcularPontuacaoJogo(
+        jogo,
+        palpite,
+        golsANumero,
+        golsBNumero
+      );
+
+      const pontosPenaltis =
+        tevePenaltis && penANumero !== null && penBNumero !== null
+          ? calcularPontuacaoPenaltis(palpite, penANumero, penBNumero)
+          : 0;
 
       await supabase.from("pontuacoes").upsert(
         {
           participante_id: palpite.participante_id,
           jogo_id: jogo.id,
-          pontos: calculo.pontos,
-          cravada: calculo.cravada,
+          pontos: pontosJogo.pontos + pontosPenaltis,
+          cravada: pontosJogo.cravada,
         },
         {
           onConflict: "participante_id,jogo_id",
@@ -170,14 +293,20 @@ export default function AdminPage() {
       );
     }
 
-    const { data: todasPontuacoes } = await supabase.from("pontuacoes").select("*");
+    const { data: todasPontuacoes } = await supabase
+      .from("pontuacoes")
+      .select("*");
 
     for (const participante of participantes) {
       const pontosParticipante = (todasPontuacoes || []).filter(
         (p) => p.participante_id === participante.id
       );
 
-      const totalPontos = pontosParticipante.reduce((soma, p) => soma + (p.pontos || 0), 0);
+      const totalPontos = pontosParticipante.reduce(
+        (soma, p) => soma + (p.pontos || 0),
+        0
+      );
+
       const totalCravadas = pontosParticipante.filter((p) => p.cravada).length;
 
       await supabase
@@ -191,6 +320,24 @@ export default function AdminPage() {
 
     setMensagem("Resultado salvo e pontuação recalculada!");
     carregarDados();
+  }
+
+  function alterarResultado(
+    jogoId: number,
+    campo: "a" | "b" | "tevePenaltis" | "penA" | "penB",
+    valor: string | boolean
+  ) {
+    setResultados((atual) => ({
+      ...atual,
+      [jogoId]: {
+        a: atual[jogoId]?.a ?? "",
+        b: atual[jogoId]?.b ?? "",
+        tevePenaltis: atual[jogoId]?.tevePenaltis ?? false,
+        penA: atual[jogoId]?.penA ?? "",
+        penB: atual[jogoId]?.penB ?? "",
+        [campo]: valor,
+      },
+    }));
   }
 
   useEffect(() => {
@@ -213,7 +360,9 @@ export default function AdminPage() {
                   <td className="p-2">{p.apelido}</td>
                   <td className="p-2">{p.nome_completo}</td>
                   <td className="p-2">{p.pago ? "✅ Pago" : "❌ Pendente"}</td>
-                  <td className="p-2">{p.administrador ? "✅ Admin" : "Participante"}</td>
+                  <td className="p-2">
+                    {p.administrador ? "✅ Admin" : "Participante"}
+                  </td>
                   <td className="p-2">
                     <button
                       onClick={() => alternarPagamento(p.id, p.pago)}
@@ -231,7 +380,11 @@ export default function AdminPage() {
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-2xl font-semibold mb-4">Cadastrar Jogo</h2>
 
-          <select value={fase} onChange={(e) => setFase(e.target.value)} className="w-full border rounded p-3 mb-3">
+          <select
+            value={fase}
+            onChange={(e) => setFase(e.target.value)}
+            className="w-full border rounded p-3 mb-3"
+          >
             <option>Fase de Grupos</option>
             <option>2ª Fase</option>
             <option>Oitavas de Final</option>
@@ -241,11 +394,31 @@ export default function AdminPage() {
             <option>Final</option>
           </select>
 
-          <input placeholder="Seleção A" value={timeA} onChange={(e) => setTimeA(e.target.value)} className="w-full border rounded p-3 mb-3" />
-          <input placeholder="Seleção B" value={timeB} onChange={(e) => setTimeB(e.target.value)} className="w-full border rounded p-3 mb-3" />
-          <input type="datetime-local" value={dataHora} onChange={(e) => setDataHora(e.target.value)} className="w-full border rounded p-3 mb-4" />
+          <input
+            placeholder="Seleção A"
+            value={timeA}
+            onChange={(e) => setTimeA(e.target.value)}
+            className="w-full border rounded p-3 mb-3"
+          />
 
-          <button onClick={cadastrarJogo} className="bg-green-600 text-white font-semibold px-4 py-2 rounded">
+          <input
+            placeholder="Seleção B"
+            value={timeB}
+            onChange={(e) => setTimeB(e.target.value)}
+            className="w-full border rounded p-3 mb-3"
+          />
+
+          <input
+            type="datetime-local"
+            value={dataHora}
+            onChange={(e) => setDataHora(e.target.value)}
+            className="w-full border rounded p-3 mb-4"
+          />
+
+          <button
+            onClick={cadastrarJogo}
+            className="bg-green-600 text-white font-semibold px-4 py-2 rounded"
+          >
             Cadastrar Jogo
           </button>
 
@@ -255,66 +428,109 @@ export default function AdminPage() {
         <section className="bg-white rounded-xl shadow p-6">
           <h2 className="text-2xl font-semibold mb-4">Resultados dos Jogos</h2>
 
-          {jogos.map((jogo) => (
-            <div key={jogo.id} className="border rounded-lg p-4 mb-4">
-              <p className="font-semibold">
-                {jogo.time_a} x {jogo.time_b}
-              </p>
+          {jogos.map((jogo) => {
+            const resultadoAtual = resultados[jogo.id];
+            const tevePenaltis =
+              resultadoAtual?.tevePenaltis ?? jogo.teve_penaltis ?? false;
 
-              <p className="text-sm text-gray-600 mb-3">
-                {jogo.fase} — {new Date(jogo.data_hora).toLocaleString("pt-BR")}
-              </p>
+            return (
+              <div key={jogo.id} className="border rounded-lg p-4 mb-4">
+                <p className="font-semibold">
+                  {jogo.time_a} x {jogo.time_b}
+                </p>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  className="w-20 border rounded p-2 text-center"
-                  placeholder="0"
-                  value={resultados[jogo.id]?.a ?? jogo.gols_a ?? ""}
-                  onChange={(e) =>
-                    setResultados((atual) => ({
-                      ...atual,
-                      [jogo.id]: {
-                        ...atual[jogo.id],
-                        a: e.target.value,
-                      },
-                    }))
-                  }
-                />
+                <p className="text-sm text-gray-600 mb-3">
+                  {jogo.fase} — {new Date(jogo.data_hora).toLocaleString("pt-BR")}
+                </p>
 
-                <span>x</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-20 border rounded p-2 text-center"
+                    placeholder="0"
+                    value={resultadoAtual?.a ?? jogo.gols_a ?? ""}
+                    onChange={(e) =>
+                      alterarResultado(jogo.id, "a", e.target.value)
+                    }
+                  />
 
-                <input
-                  type="number"
-                  min="0"
-                  className="w-20 border rounded p-2 text-center"
-                  placeholder="0"
-                  value={resultados[jogo.id]?.b ?? jogo.gols_b ?? ""}
-                  onChange={(e) =>
-                    setResultados((atual) => ({
-                      ...atual,
-                      [jogo.id]: {
-                        ...atual[jogo.id],
-                        b: e.target.value,
-                      },
-                    }))
-                  }
-                />
+                  <span>x</span>
+
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-20 border rounded p-2 text-center"
+                    placeholder="0"
+                    value={resultadoAtual?.b ?? jogo.gols_b ?? ""}
+                    onChange={(e) =>
+                      alterarResultado(jogo.id, "b", e.target.value)
+                    }
+                  />
+
+                  <label className="ml-4 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={tevePenaltis}
+                      onChange={(e) =>
+                        alterarResultado(
+                          jogo.id,
+                          "tevePenaltis",
+                          e.target.checked
+                        )
+                      }
+                    />
+                    Teve pênaltis?
+                  </label>
+                </div>
+
+                {tevePenaltis && (
+                  <div className="mt-4 bg-slate-50 rounded p-4">
+                    <p className="font-medium mb-2">Resultado dos pênaltis:</p>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-20 border rounded p-2 text-center"
+                        placeholder="0"
+                        value={resultadoAtual?.penA ?? jogo.penaltis_a ?? ""}
+                        onChange={(e) =>
+                          alterarResultado(jogo.id, "penA", e.target.value)
+                        }
+                      />
+
+                      <span>x</span>
+
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-20 border rounded p-2 text-center"
+                        placeholder="0"
+                        value={resultadoAtual?.penB ?? jogo.penaltis_b ?? ""}
+                        onChange={(e) =>
+                          alterarResultado(jogo.id, "penB", e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={() => salvarResultado(jogo)}
-                  className="ml-3 bg-purple-600 text-white px-4 py-2 rounded"
+                  className="mt-4 bg-purple-600 text-white px-4 py-2 rounded"
                 >
                   Salvar Resultado
                 </button>
-              </div>
 
-              <p className="mt-2 text-sm">
-                {jogo.encerrado ? "✅ Jogo encerrado" : "⏳ Resultado ainda não lançado"}
-              </p>
-            </div>
-          ))}
+                <p className="mt-2 text-sm">
+                  {jogo.encerrado
+                    ? "✅ Jogo encerrado"
+                    : "⏳ Resultado ainda não lançado"}
+                </p>
+              </div>
+            );
+          })}
         </section>
       </div>
     </main>
