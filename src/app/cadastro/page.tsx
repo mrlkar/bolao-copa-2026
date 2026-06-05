@@ -11,7 +11,7 @@ export default function CadastroPage() {
   const [apelido, setApelido] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-
+const [telefone, setTelefone] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [limiteAtingido, setLimiteAtingido] = useState(false);
@@ -45,7 +45,7 @@ export default function CadastroPage() {
       return;
     }
 
-    if (!nome || !apelido || !email || !senha) {
+    if (!nome || !apelido || !telefone || !email || !senha) {
       setMensagem("Preencha todos os campos.");
       return;
     }
@@ -56,6 +56,7 @@ export default function CadastroPage() {
       {
         nome_completo: nome,
         apelido,
+        telefone,
         email,
         senha,
         pago: false,
@@ -113,7 +114,13 @@ export default function CadastroPage() {
               onChange={(e) => setApelido(e.target.value)}
               className="w-full border rounded p-3 mb-3"
             />
-
+<input
+  type="text"
+  placeholder="Telefone / WhatsApp"
+  value={telefone}
+  onChange={(e) => setTelefone(e.target.value)}
+  className="w-full border rounded p-3 mb-3"
+/>
             <input
               type="email"
               placeholder="E-mail"
