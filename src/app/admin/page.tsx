@@ -279,7 +279,9 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-  const dados = localStorage.getItem("participante");
+  if (typeof window === "undefined") return;
+
+  const dados = window.localStorage.getItem("participante");
 
   if (!dados) {
     router.push("/login");
