@@ -53,6 +53,11 @@ export default function PainelPage() {
   const [palpitesPublicos, setPalpitesPublicos] = useState<PalpitePublico[]>([]);
   const [pontuacoes, setPontuacoes] = useState<Pontuacao[]>([]);
   const [mensagem, setMensagem] = useState("");
+  const [mostrarAlterarSenha, setMostrarAlterarSenha] = useState(false);
+const [senhaAtual, setSenhaAtual] = useState("");
+const [novaSenha, setNovaSenha] = useState("");
+const [confirmarSenha, setConfirmarSenha] = useState("");
+const [mensagemSenha, setMensagemSenha] = useState("");
 
   useEffect(() => {
     const dados = localStorage.getItem("participante");
@@ -207,7 +212,54 @@ if (!participante.pago) {
       return grupos;
     }, {});
   }
+async function alterarSenha() {
+  setMensagemSenha("");
 
+  if (!participante) return;
+
+  if (!senhaAtual || !novaSenha || !confirmarSenha) {
+    setMensagemSenha("Preencha todos os campos.");
+    return;
+  }
+
+  if (senhaAtual !== (participante as any).senha) {
+    setMensagemSenha("Senha atual incorreta.");
+    return;
+  }
+
+  if (novaSenha !== confirmarSenha) {
+    setMensagemSenha("A nova senha e a confirmação não conferem.");
+    return;
+  }
+
+  if (novaSenha.length < 4) {
+    setMensagemSenha("A nova senha deve ter pelo menos 4 caracteres.");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("participantes")
+    .update({ senha: novaSenha })
+    .eq("id", participante.id);
+
+  if (error) {
+    setMensagemSenha("Erro ao alterar senha: " + error.message);
+    return;
+  }
+
+  const participanteAtualizado = {
+    ...participante,
+    senha: novaSenha,
+  };
+
+  setParticipante(participanteAtualizado);
+  localStorage.setItem("participante", JSON.stringify(participanteAtualizado));
+
+  setSenhaAtual("");
+  setNovaSenha("");
+  setConfirmarSenha("");
+  setMensagemSenha("Senha alterada com sucesso!");
+}
   function sair() {
     localStorage.removeItem("participante");
     router.push("/login");
@@ -587,6 +639,55 @@ const participantesSemPalpiteProximoJogo = proximoJogo
               ))}
             </div>
           </div>
+          <div className="mt-6">
+  <button
+    onClick={() => setMostrarAlterarSenha(!mostrarAlterarSenha)}
+    className="bg-slate-600 hover:bg-slate-700 text-white font-semibold px-4 py-2 rounded"
+  >
+    🔒 Alterar Senha
+  </button>
+
+  {mostrarAlterarSenha && (
+    <div className="mt-4 bg-slate-50 border rounded p-4">
+      <input
+        type="password"
+        placeholder="Senha atual"
+        value={senhaAtual}
+        onChange={(e) => setSenhaAtual(e.target.value)}
+        className="w-full border rounded p-3 mb-3"
+      />
+
+      <input
+        type="password"
+        placeholder="Nova senha"
+        value={novaSenha}
+        onChange={(e) => setNovaSenha(e.target.value)}
+        className="w-full border rounded p-3 mb-3"
+      />
+
+      <input
+        type="password"
+        placeholder="Confirmar nova senha"
+        value={confirmarSenha}
+        onChange={(e) => setConfirmarSenha(e.target.value)}
+        className="w-full border rounded p-3 mb-3"
+      />
+
+      <button
+        onClick={alterarSenha}
+        className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
+      >
+        Salvar nova senha
+      </button>
+
+      {mensagemSenha && (
+        <p className="mt-3 font-medium">
+          {mensagemSenha}
+        </p>
+      )}
+    </div>
+  )}
+</div>
           <button
             onClick={sair}
             className="mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded"
