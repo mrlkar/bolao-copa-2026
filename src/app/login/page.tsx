@@ -31,15 +31,10 @@ export default function LoginPage() {
 
     setCarregando(false);
 
-   console.log("ERRO:", error);
-console.log("DADOS:", data);
-
-if (error || !data) {
-  setMensagem(
-    JSON.stringify(error) || "E-mail ou senha inválidos."
-  );
-  return;
-}
+    if (error || !data) {
+      setMensagem("E-mail ou senha inválidos.");
+      return;
+    }
 
     localStorage.setItem("participante", JSON.stringify(data));
 
