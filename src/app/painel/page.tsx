@@ -295,6 +295,21 @@ const rankingFase = participantes
 
   const jogosAbertos = jogos.filter((jogo) => !jogo.encerrado);
   const jogosEncerrados = jogos.filter((jogo) => jogo.encerrado);
+  const proximoJogo = jogosAbertos[0];
+
+const participantesPagos = participantes.filter((p) => p.pago);
+
+const participantesQuePalpitaramProximoJogo = proximoJogo
+  ? palpitesPublicos
+      .filter((p) => p.jogo_id === proximoJogo.id)
+      .map((p) => p.participante_id)
+  : [];
+
+const participantesSemPalpiteProximoJogo = proximoJogo
+  ? participantesPagos.filter(
+      (p) => !participantesQuePalpitaramProximoJogo.includes(p.id)
+    )
+  : [];
 
   function renderJogo(jogo: Jogo) {
     const fechado = jogoFechado(jogo.data_hora);
@@ -466,6 +481,39 @@ const rankingFase = participantes
     <p className="text-red-700">
       Os palpites somente serão liberados após a confirmação do pagamento.
     </p>
+  </div>
+)}
+{proximoJogo && (
+  <div className="mt-4 bg-blue-50 border border-blue-300 rounded p-4">
+    <h2 className="font-bold text-lg mb-2">
+      ⏰ Próximo jogo
+    </h2>
+
+    <p className="font-semibold">
+      {proximoJogo.time_a} x {proximoJogo.time_b}
+    </p>
+
+    <p className="text-sm text-gray-700 mb-3">
+      {new Date(proximoJogo.data_hora).toLocaleString("pt-BR")}
+    </p>
+
+    <p className="font-semibold mb-1">
+      Ainda não palpitaram:
+    </p>
+
+    {participantesSemPalpiteProximoJogo.length === 0 ? (
+      <p className="text-green-700 font-medium">
+        Todos os participantes pagos já palpitaram.
+      </p>
+    ) : (
+      <ul className="list-disc pl-6">
+        {participantesSemPalpiteProximoJogo.map((p) => (
+          <li key={p.id}>
+            {p.apelido || p.nome_completo}
+          </li>
+        ))}
+      </ul>
+    )}
   </div>
 )}
           <p><strong>Pontos:</strong> {participante.pontos ?? 0}</p>
