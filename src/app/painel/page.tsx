@@ -327,7 +327,13 @@ const participantesSemPalpiteProximoJogo = proximoJogo
     const listaPalpites = palpitesDoJogo(jogo.id);
     const ehEliminatorio = faseEliminatoria(jogo.fase);
     const pontosDoJogo = pontuacaoDoJogo(jogo.id);
-    const palpiteJaRegistrado = !!palpites[jogo.id];
+    const palpiteJaRegistrado = participante
+  ? palpitesPublicos.some(
+      (p) =>
+        p.jogo_id === jogo.id &&
+        p.participante_id === participante.id
+    )
+  : false;
 
     return (
       <div key={jogo.id} className="border rounded-lg p-4 bg-white">
