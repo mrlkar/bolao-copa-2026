@@ -495,7 +495,7 @@ const participantesSemPalpiteProximoJogo = proximoJogo
   </div>
 )}
 {proximoJogo && (
-  <div className="mt-4 bg-blue-50 border border-blue-300 rounded p-4">
+  <div className="mt-4 bg-red-50 border border-blue-300 rounded p-4">
     <h2 className="font-bold text-lg mb-2">
       ⏰ Próximo jogo
     </h2>
