@@ -327,6 +327,7 @@ const participantesSemPalpiteProximoJogo = proximoJogo
     const listaPalpites = palpitesDoJogo(jogo.id);
     const ehEliminatorio = faseEliminatoria(jogo.fase);
     const pontosDoJogo = pontuacaoDoJogo(jogo.id);
+    const palpiteJaRegistrado = !!palpites[jogo.id];
 
     return (
       <div key={jogo.id} className="border rounded-lg p-4 bg-white">
@@ -381,13 +382,23 @@ const participantesSemPalpiteProximoJogo = proximoJogo
           />
 
           <button
-            onClick={() => salvarPalpite(jogo)}
-            disabled={fechado}
-            className="ml-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded"
-          >
-            Salvar
-          </button>
+  onClick={() => salvarPalpite(jogo)}
+  disabled={fechado}
+  className={
+    palpiteJaRegistrado
+      ? "ml-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded"
+      : "ml-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded"
+  }
+>
+  {palpiteJaRegistrado ? "Atualizar Palpite" : "Salvar"}
+</button>
         </div>
+
+        {palpiteJaRegistrado && (
+          <p className="mt-2 text-green-700 font-semibold">
+            ✅ Palpite registrado
+          </p>
+        )}
 
         {ehEliminatorio && !fechado && (
           <div className="mt-4 bg-slate-50 rounded p-4">
@@ -495,10 +506,10 @@ const participantesSemPalpiteProximoJogo = proximoJogo
   </div>
 )}
 {proximoJogo && (
-  <div className="mt-4 bg-red-50 border border-blue-300 rounded p-4">
-    <h2 className="font-bold text-lg mb-2">
-      ⏰ Próximo jogo
-    </h2>
+  <div className="mt-4 bg-red-100 border border-red-500 rounded p-4">
+    <h2 className="font-bold text-lg mb-2 text-red-700">
+  ⏰ Próximo jogo
+</h2>
 
     <p className="font-semibold">
       {proximoJogo.time_a} x {proximoJogo.time_b}
