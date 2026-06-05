@@ -242,8 +242,19 @@ if (!participante.pago) {
   return fase;
 }
 
+function faseLiberadaParaRanking(jogo: Jogo) {
+  const horarioJogo = new Date(jogo.data_hora).getTime();
+  const fechamento = horarioJogo - 60 * 1000;
+
+  return Date.now() >= fechamento;
+}
+
+const jogosComFaseLiberada = jogos.filter((jogo) =>
+  faseLiberadaParaRanking(jogo)
+);
+
 const jogoReferencia =
-  jogos.find((jogo) => !jogo.encerrado) || jogos[jogos.length - 1];
+  jogosComFaseLiberada[jogosComFaseLiberada.length - 1] || jogos[0];
 
 const faseVigente = jogoReferencia
   ? fasePremiacao(jogoReferencia.fase)
