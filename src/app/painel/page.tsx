@@ -230,6 +230,68 @@ if (!participante.pago) {
     });
 
   const minhaPosicao = ranking.findIndex((p) => p.id === participante.id) + 1;
+  function fasePremiacao(fase: string) {
+  if (
+    fase === "Semifinais" ||
+    fase === "Disputa de 3º Lugar" ||
+    fase === "Final"
+  ) {
+    return "Semifinais + 3º Lugar + Final";
+  }
+
+  return fase;
+}
+
+const jogoReferencia =
+  jogos.find((jogo) => !jogo.encerrado) || jogos[jogos.length - 1];
+
+const faseVigente = jogoReferencia
+  ? fasePremiacao(jogoReferencia.fase)
+  : "Fase de Grupos";
+
+const rankingFase = participantes
+  .filter((p) => p.pago)
+  .map((p) => {
+    const pontosDaFase = pontuacoes
+      .filter((pt) => {
+        const jogo = jogos.find((j) => j.id === pt.jogo_id);
+
+        return (
+          pt.participante_id === p.id &&
+          jogo &&
+          fasePremiacao(jogo.fase) === faseVigente
+        );
+      })
+      .reduce((soma, pt) => soma + (pt.pontos || 0), 0);
+
+    const cravadasDaFase = pontuacoes.filter((pt) => {
+      const jogo = jogos.find((j) => j.id === pt.jogo_id);
+
+      return (
+        pt.participante_id === p.id &&
+        pt.cravada &&
+        jogo &&
+        fasePremiacao(jogo.fase) === faseVigente
+      );
+    }).length;
+
+    return {
+      ...p,
+      pontosFase: pontosDaFase,
+      cravadasFase: cravadasDaFase,
+    };
+  })
+  .sort((a, b) => {
+    if (b.pontosFase !== a.pontosFase) {
+      return b.pontosFase - a.pontosFase;
+    }
+
+    if (b.cravadasFase !== a.cravadasFase) {
+      return b.cravadasFase - a.cravadasFase;
+    }
+
+    return a.id - b.id;
+  });
 
   const jogosAbertos = jogos.filter((jogo) => !jogo.encerrado);
   const jogosEncerrados = jogos.filter((jogo) => jogo.encerrado);
@@ -421,7 +483,34 @@ if (!participante.pago) {
               ))}
             </div>
           </div>
+          <div className="mt-4 bg-blue-50 border border-blue-300 rounded p-4">
+            <h2 className="font-bold text-lg mb-2">
+              🏅 Ranking da Premiação Atual
+            </h2>
 
+            <p className="mb-2 text-sm text-gray-700">
+              Fase vigente: <strong>{faseVigente}</strong>
+            </p>
+
+            <div className="space-y-1">
+              {rankingFase.slice(0, 10).map((p, index) => (
+                <div
+                  key={p.id}
+                  className={
+                    p.id === participante.id
+                      ? "font-bold text-blue-700"
+                      : ""
+                  }
+                >
+                  {index + 1}º - {p.apelido || p.nome_completo}
+                  {" — "}
+                  {p.pontosFase || 0} pts
+                  {" — "}
+                  {p.cravadasFase || 0} cravadas
+                </div>
+              ))}
+            </div>
+          </div>
           <button
             onClick={sair}
             className="mt-6 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded"
