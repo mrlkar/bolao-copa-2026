@@ -639,7 +639,7 @@
               <h2 className="font-bold text-lg mb-2">🏆 Ranking Geral</h2>
 
               <div className="space-y-1">
-                {ranking.slice(0, 50).map((p, index) => (
+                {ranking.map((p, index) => (
                   <div key={p.id} className={p.id === participante.id ? "font-bold text-blue-700" : ""}>
                     {index + 1}º - {p.apelido || p.nome_completo} — {p.pontos || 0} pts — {p.cravadas || 0} cravadas
                   </div>
@@ -656,7 +656,7 @@
               </p>
 
               <div className="space-y-1">
-                {rankingFase.slice(0, 10).map((p, index) => (
+                {rankingFase.map((p, index) => (
                   <div
                     key={p.id}
                     className={
