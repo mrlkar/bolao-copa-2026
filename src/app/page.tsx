@@ -106,7 +106,7 @@ export default function Home() {
             <p>Nenhum participante confirmado ainda.</p>
           ) : (
             <div className="space-y-3">
-              {ranking.slice(0, 10).map((p, index) => (
+              {ranking.map((p, index) => (
                 <div
                   key={p.id}
                   className="flex justify-between border-b pb-2"
