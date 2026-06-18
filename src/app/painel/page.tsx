@@ -83,11 +83,14 @@
         .from("participantes")
         .select("*");
 
-      const { data: todosPalpites } = await supabase.from("palpites").select("*");
-
+const { data: todosPalpites } = await supabase
+  .from("palpites")
+  .select("*")
+  .range(0, 10000);
       const { data: todasPontuacoes } = await supabase
-        .from("pontuacoes")
-        .select("*");
+  .from("pontuacoes")
+  .select("*")
+  .range(0, 10000);
 
       setJogos(dadosJogos || []);
       setParticipantes(todosParticipantes || []);
@@ -133,58 +136,84 @@
       }));
     }
 
-    async function salvarPalpite(jogo: Jogo) {
-      setMensagem("");
+async function salvarPalpite(jogo: Jogo) {
+  setMensagem("");
 
-      if (!participante) return;
+  if (!participante) return;
+
   if (!participante.pago) {
     setMensagem(
       "Seu pagamento ainda não foi confirmado. Você não pode registrar palpites."
     );
     return;
   }
-      if (jogoFechado(jogo.data_hora)) {
-        setMensagem("Palpites encerrados para este jogo.");
-        return;
-      }
 
-      const palpite = palpites[jogo.id];
+  if (jogoFechado(jogo.data_hora)) {
+    setMensagem("Palpites encerrados para este jogo.");
+    return;
+  }
 
-      if (!palpite || palpite.a === "" || palpite.b === "") {
-        setMensagem("Informe os dois placares antes de salvar.");
-        return;
-      }
+  const palpite = palpites[jogo.id];
 
-      const precisaPenaltis = faseEliminatoria(jogo.fase);
+  if (!palpite || palpite.a === "" || palpite.b === "") {
+    setMensagem("Informe os dois placares antes de salvar.");
+    return;
+  }
 
-      if (precisaPenaltis && (palpite.penA === "" || palpite.penB === "")) {
-        setMensagem("Informe também o palpite dos pênaltis.");
-        return;
-      }
+  const precisaPenaltis = faseEliminatoria(jogo.fase);
 
-      const { error } = await supabase.from("palpites").upsert(
-        {
-          participante_id: participante.id,
-          jogo_id: jogo.id,
-          gols_time_a: Number(palpite.a),
-          gols_time_b: Number(palpite.b),
-          palpite_a: Number(palpite.a),
-          palpite_b: Number(palpite.b),
-          palpite_penaltis_a: precisaPenaltis ? Number(palpite.penA) : null,
-          palpite_penaltis_b: precisaPenaltis ? Number(palpite.penB) : null,
-        },
-        { onConflict: "participante_id,jogo_id" }
-      );
+  if (precisaPenaltis && (palpite.penA === "" || palpite.penB === "")) {
+    setMensagem("Informe também o palpite dos pênaltis.");
+    return;
+  }
 
-      if (error) {
-        setMensagem("Erro ao salvar palpite: " + error.message);
-        return;
-      }
+  const dadosPalpite = {
+    participante_id: participante.id,
+    jogo_id: jogo.id,
+    gols_time_a: Number(palpite.a),
+    gols_time_b: Number(palpite.b),
+    palpite_a: Number(palpite.a),
+    palpite_b: Number(palpite.b),
+    palpite_penaltis_a: precisaPenaltis ? Number(palpite.penA) : null,
+    palpite_penaltis_b: precisaPenaltis ? Number(palpite.penB) : null,
+  };
 
-      setMensagem("Palpite salvo com sucesso!");
-      carregarDados(participante.id);
+  const { data: palpiteExistente, error: erroBusca } = await supabase
+    .from("palpites")
+    .select("id")
+    .eq("participante_id", participante.id)
+    .eq("jogo_id", jogo.id)
+    .maybeSingle();
+
+  if (erroBusca) {
+    setMensagem("Erro ao verificar palpite: " + erroBusca.message);
+    return;
+  }
+
+  if (palpiteExistente) {
+    const { error: erroAtualizar } = await supabase
+      .from("palpites")
+      .update(dadosPalpite)
+      .eq("id", palpiteExistente.id);
+
+    if (erroAtualizar) {
+      setMensagem("Erro ao atualizar palpite: " + erroAtualizar.message);
+      return;
     }
+  } else {
+    const { error: erroInserir } = await supabase
+      .from("palpites")
+      .insert([dadosPalpite]);
 
+    if (erroInserir) {
+      setMensagem("Erro ao salvar palpite: " + erroInserir.message);
+      return;
+    }
+  }
+
+  setMensagem("Palpite salvo com sucesso!");
+  await carregarDados(participante.id);
+}
     function nomeParticipante(id: number) {
       const p = participantes.find((item) => item.id === id);
       return p?.apelido || p?.nome_completo || "Participante";
