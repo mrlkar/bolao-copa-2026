@@ -74,44 +74,63 @@
     }, [router]);
 
     async function carregarDados(participanteId: number) {
-      const { data: dadosJogos } = await supabase
-        .from("jogos")
-        .select("*")
-        .order("data_hora");
+  const { data: dadosJogos } = await supabase
+    .from("jogos")
+    .select("*")
+    .order("data_hora");
 
-      const { data: todosParticipantes } = await supabase
-        .from("participantes")
-        .select("*");
+  const { data: todosParticipantes } = await supabase
+    .from("participantes")
+    .select("*");
 
-const { data: todosPalpites } = await supabase
-  .from("palpites")
-  .select("*")
-  .range(0, 10000);
-      const { data: todasPontuacoes } = await supabase
-  .from("pontuacoes")
-  .select("*")
-  .range(0, 10000);
+  const { data: todosPalpites } = await supabase
+    .from("palpites")
+    .select("*")
+    .range(0, 10000);
 
-      setJogos(dadosJogos || []);
-      setParticipantes(todosParticipantes || []);
-      setPalpitesPublicos(todosPalpites || []);
-      setPontuacoes(todasPontuacoes || []);
+  const { data: meusPalpitesData } = await supabase
+    .from("palpites")
+    .select("*")
+    .eq("participante_id", participanteId)
+    .range(0, 500);
 
-      const meusPalpites: Record<number, { a: string; b: string; penA: string; penB: string }> = {};
+  const { data: todasPontuacoes } = await supabase
+    .from("pontuacoes")
+    .select("*")
+    .range(0, 10000);
 
-      (todosPalpites || [])
-        .filter((p) => p.participante_id === participanteId)
-        .forEach((p) => {
-          meusPalpites[p.jogo_id] = {
-            a: String(p.gols_time_a),
-            b: String(p.gols_time_b),
-            penA: p.palpite_penaltis_a == null ? "" : String(p.palpite_penaltis_a),
-            penB: p.palpite_penaltis_b == null ? "" : String(p.palpite_penaltis_b),
-          };
-        });
+  const palpitesCombinados = [
+    ...(todosPalpites || []),
+    ...(meusPalpitesData || []),
+  ];
 
-      setPalpites(meusPalpites);
-    }
+  setJogos(dadosJogos || []);
+  setParticipantes(todosParticipantes || []);
+  setPalpitesPublicos(palpitesCombinados);
+  setPontuacoes(todasPontuacoes || []);
+
+  const meusPalpites: Record<
+    number,
+    { a: string; b: string; penA: string; penB: string }
+  > = {};
+
+  (meusPalpitesData || []).forEach((p) => {
+    meusPalpites[p.jogo_id] = {
+      a: String(p.gols_time_a),
+      b: String(p.gols_time_b),
+      penA:
+        p.palpite_penaltis_a == null
+          ? ""
+          : String(p.palpite_penaltis_a),
+      penB:
+        p.palpite_penaltis_b == null
+          ? ""
+          : String(p.palpite_penaltis_b),
+    };
+  });
+
+  setPalpites(meusPalpites);
+}
 
     function faseEliminatoria(fase: string) {
       return fase !== "Fase de Grupos";
