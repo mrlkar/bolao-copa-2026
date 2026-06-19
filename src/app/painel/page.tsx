@@ -273,9 +273,11 @@ export default function PainelPage() {
     return p?.apelido || p?.nome_completo || "Participante";
   }
 
-  function palpitesDoJogo(jogoId: number) {
-    return palpitesPublicos.filter((p) => p.jogo_id === jogoId);
-  }
+ function palpitesDoJogo(jogoId: number) {
+  return palpitesPublicos.filter(
+    (p) => Number(p.jogo_id) === Number(jogoId)
+  );
+}
 
   function pontuacaoDoJogo(jogoId: number) {
     if (!participante) return null;
