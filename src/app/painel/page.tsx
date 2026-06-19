@@ -435,11 +435,14 @@ export default function PainelPage() {
 
     return !jogo.encerrado && fechamento > agora;
   });
+
   const participantesPagos = participantes.filter((p) => p.pago);
 
   const participantesQuePalpitaramProximoJogo = proximoJogo
-  ? palpitesProximoJogo.map((p) => p.participante_id)
-  : [];
+    ? palpitesPublicos
+        .filter((p) => p.jogo_id === proximoJogo.id)
+        .map((p) => p.participante_id)
+    : [];
 
   const participantesSemPalpiteProximoJogo = proximoJogo
     ? participantesPagos.filter(
