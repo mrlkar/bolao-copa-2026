@@ -57,6 +57,7 @@ export default function PainelPage() {
     Record<number, { a: string; b: string; penA: string; penB: string }>
   >({});
   const [palpitesPublicos, setPalpitesPublicos] = useState<PalpitePublico[]>([]);
+  const [palpitesProximoJogo, setPalpitesProximoJogo] = useState<PalpitePublico[]>([]);
   const [pontuacoes, setPontuacoes] = useState<Pontuacao[]>([]);
   const [mensagem, setMensagem] = useState("");
   const [mostrarAlterarSenha, setMostrarAlterarSenha] = useState(false);
@@ -435,14 +436,29 @@ export default function PainelPage() {
 
     return !jogo.encerrado && fechamento > agora;
   });
+useEffect(() => {
+  async function carregarPalpitesProximoJogo() {
+    if (!proximoJogo) {
+      setPalpitesProximoJogo([]);
+      return;
+    }
 
+    const { data } = await supabase
+      .from("palpites")
+      .select("*")
+      .eq("jogo_id", proximoJogo.id)
+      .range(0, 500);
+
+    setPalpitesProximoJogo(data || []);
+  }
+
+  carregarPalpitesProximoJogo();
+}, [proximoJogo?.id]);
   const participantesPagos = participantes.filter((p) => p.pago);
 
   const participantesQuePalpitaramProximoJogo = proximoJogo
-    ? palpitesPublicos
-        .filter((p) => p.jogo_id === proximoJogo.id)
-        .map((p) => p.participante_id)
-    : [];
+  ? palpitesProximoJogo.map((p) => p.participante_id)
+  : [];
 
   const participantesSemPalpiteProximoJogo = proximoJogo
     ? participantesPagos.filter(
