@@ -79,6 +79,35 @@ export default function PainelPage() {
   }, [router]);
 
   async function carregarDados(participanteId: number) {
+  async function carregarTodosPalpites() {
+    let inicio = 0;
+    const tamanho = 1000;
+    let todos: PalpitePublico[] = [];
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("palpites")
+        .select("*")
+        .order("id", { ascending: true })
+        .range(inicio, inicio + tamanho - 1);
+
+      if (error) {
+        console.error("Erro ao carregar palpites:", error);
+        break;
+      }
+
+      todos = [...todos, ...((data || []) as PalpitePublico[])];
+
+      if (!data || data.length < tamanho) {
+        break;
+      }
+
+      inicio += tamanho;
+    }
+
+    return todos;
+  }
+
   const { data: dadosJogos } = await supabase
     .from("jogos")
     .select("*")
@@ -88,11 +117,7 @@ export default function PainelPage() {
     .from("participantes")
     .select("*");
 
-  const { data: todosPalpites } = await supabase
-    .from("palpites")
-    .select("*")
-    .order("id", { ascending: false })
-    .range(0, 10000);
+  const todosPalpites = await carregarTodosPalpites();
 
   const { data: meusPalpitesData } = await supabase
     .from("palpites")
@@ -100,43 +125,14 @@ export default function PainelPage() {
     .eq("participante_id", participanteId)
     .range(0, 500);
 
-  const agora = Date.now();
-
-  const proximoJogoAtual = (dadosJogos || []).find((jogo) => {
-    const horarioJogo = new Date(jogo.data_hora).getTime();
-    const fechamento = horarioJogo - 60 * 1000;
-
-    return !jogo.encerrado && fechamento > agora;
-  });
-
-  const { data: palpitesDoProximoJogo } = proximoJogoAtual
-    ? await supabase
-        .from("palpites")
-        .select("*")
-        .eq("jogo_id", proximoJogoAtual.id)
-        .range(0, 500)
-    : { data: [] };
-
   const { data: todasPontuacoes } = await supabase
     .from("pontuacoes")
     .select("*")
     .range(0, 10000);
 
-  const palpitesMap = new Map<string, PalpitePublico>();
-
-  [
-    ...(todosPalpites || []),
-    ...(meusPalpitesData || []),
-    ...(palpitesDoProximoJogo || []),
-  ].forEach((p) => {
-    palpitesMap.set(`${p.participante_id}-${p.jogo_id}`, p);
-  });
-
-  const palpitesCombinados = Array.from(palpitesMap.values());
-
   setJogos(dadosJogos || []);
   setParticipantes(todosParticipantes || []);
-  setPalpitesPublicos(palpitesCombinados);
+  setPalpitesPublicos(todosPalpites);
   setPontuacoes(todasPontuacoes || []);
 
   const meusPalpites: Record<
