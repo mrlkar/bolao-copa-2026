@@ -79,59 +79,88 @@ export default function PainelPage() {
   }, [router]);
 
   async function carregarDados(participanteId: number) {
-    const { data: dadosJogos } = await supabase
-      .from("jogos")
-      .select("*")
-      .order("data_hora");
+  const { data: dadosJogos } = await supabase
+    .from("jogos")
+    .select("*")
+    .order("data_hora");
 
-    const { data: todosParticipantes } = await supabase
-      .from("participantes")
-      .select("*");
+  const { data: todosParticipantes } = await supabase
+    .from("participantes")
+    .select("*");
 
-    const { data: todosPalpites } = await supabase
-      .from("palpites")
-      .select("*")
-      .range(0, 10000);
+  const { data: todosPalpites } = await supabase
+    .from("palpites")
+    .select("*")
+    .order("id", { ascending: false })
+    .range(0, 10000);
 
-    const { data: meusPalpitesData } = await supabase
-      .from("palpites")
-      .select("*")
-      .eq("participante_id", participanteId)
-      .range(0, 500);
+  const { data: meusPalpitesData } = await supabase
+    .from("palpites")
+    .select("*")
+    .eq("participante_id", participanteId)
+    .range(0, 500);
 
-    const { data: todasPontuacoes } = await supabase
-      .from("pontuacoes")
-      .select("*")
-      .range(0, 10000);
+  const agora = Date.now();
 
-    const palpitesCombinados = [
-      ...(todosPalpites || []),
-      ...(meusPalpitesData || []),
-    ];
+  const proximoJogoAtual = (dadosJogos || []).find((jogo) => {
+    const horarioJogo = new Date(jogo.data_hora).getTime();
+    const fechamento = horarioJogo - 60 * 1000;
 
-    setJogos(dadosJogos || []);
-    setParticipantes(todosParticipantes || []);
-    setPalpitesPublicos(palpitesCombinados);
-    setPontuacoes(todasPontuacoes || []);
+    return !jogo.encerrado && fechamento > agora;
+  });
 
-    const meusPalpites: Record<
-      number,
-      { a: string; b: string; penA: string; penB: string }
-    > = {};
+  const { data: palpitesDoProximoJogo } = proximoJogoAtual
+    ? await supabase
+        .from("palpites")
+        .select("*")
+        .eq("jogo_id", proximoJogoAtual.id)
+        .range(0, 500)
+    : { data: [] };
 
-    (meusPalpitesData || []).forEach((p) => {
-      meusPalpites[p.jogo_id] = {
-        a: String(p.gols_time_a),
-        b: String(p.gols_time_b),
-        penA:
-          p.palpite_penaltis_a == null ? "" : String(p.palpite_penaltis_a),
-        penB:
-          p.palpite_penaltis_b == null ? "" : String(p.palpite_penaltis_b),
-      };
-    });
+  const { data: todasPontuacoes } = await supabase
+    .from("pontuacoes")
+    .select("*")
+    .range(0, 10000);
 
-    setPalpites(meusPalpites);
-  }
+  const palpitesMap = new Map<string, PalpitePublico>();
+
+  [
+    ...(todosPalpites || []),
+    ...(meusPalpitesData || []),
+    ...(palpitesDoProximoJogo || []),
+  ].forEach((p) => {
+    palpitesMap.set(`${p.participante_id}-${p.jogo_id}`, p);
+  });
+
+  const palpitesCombinados = Array.from(palpitesMap.values());
+
+  setJogos(dadosJogos || []);
+  setParticipantes(todosParticipantes || []);
+  setPalpitesPublicos(palpitesCombinados);
+  setPontuacoes(todasPontuacoes || []);
+
+  const meusPalpites: Record<
+    number,
+    { a: string; b: string; penA: string; penB: string }
+  > = {};
+
+  (meusPalpitesData || []).forEach((p) => {
+    meusPalpites[p.jogo_id] = {
+      a: String(p.gols_time_a),
+      b: String(p.gols_time_b),
+      penA:
+        p.palpite_penaltis_a == null
+          ? ""
+          : String(p.palpite_penaltis_a),
+      penB:
+        p.palpite_penaltis_b == null
+          ? ""
+          : String(p.palpite_penaltis_b),
+    };
+  });
+
+  setPalpites(meusPalpites);
+}
 
   function faseEliminatoria(fase: string) {
     return fase !== "Fase de Grupos";
@@ -439,16 +468,16 @@ export default function PainelPage() {
   const participantesPagos = participantes.filter((p) => p.pago);
 
   const participantesQuePalpitaramProximoJogo = proximoJogo
-    ? palpitesPublicos
-        .filter((p) => p.jogo_id === proximoJogo.id)
-        .map((p) => p.participante_id)
-    : [];
+  ? palpitesPublicos
+      .filter((p) => Number(p.jogo_id) === Number(proximoJogo.id))
+      .map((p) => Number(p.participante_id))
+  : [];
 
   const participantesSemPalpiteProximoJogo = proximoJogo
-    ? participantesPagos.filter(
-        (p) => !participantesQuePalpitaramProximoJogo.includes(p.id)
-      )
-    : [];
+  ? participantesPagos.filter(
+      (p) => !participantesQuePalpitaramProximoJogo.includes(Number(p.id))
+    )
+  : [];
 
   function renderJogo(jogo: Jogo) {
     const fechado = jogoFechado(jogo.data_hora);
