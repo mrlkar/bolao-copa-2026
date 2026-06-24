@@ -125,10 +125,37 @@ export default function PainelPage() {
     .eq("participante_id", participanteId)
     .range(0, 500);
 
-  const { data: todasPontuacoes } = await supabase
-    .from("pontuacoes")
-    .select("*")
-    .range(0, 10000);
+  async function carregarTodasPontuacoes() {
+  let inicio = 0;
+  const tamanho = 1000;
+  let todas: Pontuacao[] = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("pontuacoes")
+      .select("*")
+      .order("id", { ascending: true })
+      .range(inicio, inicio + tamanho - 1);
+
+    if (error) {
+      console.error("Erro ao carregar pontuações:", error);
+      break;
+    }
+
+    todas = [...todas, ...((data || []) as Pontuacao[])];
+
+    if (!data || data.length < tamanho) {
+      break;
+    }
+
+    inicio += tamanho;
+  }
+
+  return todas;
+}
+
+const todasPontuacoes = await carregarTodasPontuacoes();
+setPontuacoes(todasPontuacoes || []);
 
   setJogos(dadosJogos || []);
   setParticipantes(todosParticipantes || []);
