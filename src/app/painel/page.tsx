@@ -132,6 +132,17 @@ export default function PainelPage() {
 
   setJogos(dadosJogos || []);
   setParticipantes(todosParticipantes || []);
+  const participanteAtualizado = (todosParticipantes || []).find(
+  (p) => p.id === participanteId
+);
+
+if (participanteAtualizado) {
+  setParticipante(participanteAtualizado);
+  localStorage.setItem(
+    "participante",
+    JSON.stringify(participanteAtualizado)
+  );
+}
   setPalpitesPublicos(todosPalpites);
   setPontuacoes(todasPontuacoes || []);
 
