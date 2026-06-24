@@ -497,11 +497,28 @@ if (participanteAtualizado) {
   const agora = Date.now();
 
   const proximoJogo = jogos.find((jogo) => {
-    const horarioJogo = new Date(jogo.data_hora).getTime();
-    const fechamento = horarioJogo - 60 * 1000;
+  const horarioJogo = new Date(jogo.data_hora).getTime();
+  const fechamento = horarioJogo - 60 * 1000;
 
-    return !jogo.encerrado && fechamento > agora;
-  });
+  return !jogo.encerrado && fechamento > agora;
+});
+
+const horarioProximoJogo = proximoJogo
+  ? new Date(proximoJogo.data_hora).getTime()
+  : null;
+
+const proximosJogos = horarioProximoJogo
+  ? jogos.filter((jogo) => {
+      const horarioJogo = new Date(jogo.data_hora).getTime();
+      const fechamento = horarioJogo - 60 * 1000;
+
+      return (
+        !jogo.encerrado &&
+        fechamento > agora &&
+        horarioJogo === horarioProximoJogo
+      );
+    })
+  : [];
 
   const participantesPagos = participantes.filter((p) => p.pago);
 
@@ -745,35 +762,55 @@ if (participanteAtualizado) {
             </div>
           )}
 
-          {proximoJogo && (
-            <div className="mt-4 bg-red-100 border border-red-500 rounded p-4">
-              <h2 className="font-bold text-lg mb-2 text-red-700">
-                ⏰ Próximo jogo
-              </h2>
+          {proximosJogos.length > 0 && (
+  <div className="mt-4 bg-red-100 border border-red-500 rounded p-4">
+    <h2 className="font-bold text-lg mb-2 text-red-700">
+      ⏰ Próximos jogos
+    </h2>
 
-              <p className="font-semibold">
-                {proximoJogo.time_a} x {proximoJogo.time_b}
+    <p className="text-sm text-gray-700 mb-3">
+      {new Date(proximosJogos[0].data_hora).toLocaleString("pt-BR")}
+    </p>
+
+    <div className="space-y-4">
+      {proximosJogos.map((jogo) => {
+        const participantesQuePalpitaram = palpitesPublicos
+          .filter((p) => Number(p.jogo_id) === Number(jogo.id))
+          .map((p) => Number(p.participante_id));
+
+        const participantesSemPalpite = participantesPagos.filter(
+          (p) => !participantesQuePalpitaram.includes(Number(p.id))
+        );
+
+        return (
+          <div key={jogo.id} className="bg-white/70 rounded p-3 border border-red-200">
+            <p className="font-semibold">
+              {jogo.time_a} x {jogo.time_b}
+            </p>
+
+            <p className="font-semibold mt-2 mb-1">
+              Ainda não palpitaram:
+            </p>
+
+            {participantesSemPalpite.length === 0 ? (
+              <p className="text-green-700 font-medium">
+                Todos os participantes pagos já palpitaram.
               </p>
-
-              <p className="text-sm text-gray-700 mb-3">
-                {new Date(proximoJogo.data_hora).toLocaleString("pt-BR")}
-              </p>
-
-              <p className="font-semibold mb-1">Ainda não palpitaram:</p>
-
-              {participantesSemPalpiteProximoJogo.length === 0 ? (
-                <p className="text-green-700 font-medium">
-                  Todos os participantes pagos já palpitaram.
-                </p>
-              ) : (
-                <ul className="list-disc pl-6">
-                  {participantesSemPalpiteProximoJogo.map((p) => (
-                    <li key={p.id}>{p.apelido || p.nome_completo}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+            ) : (
+              <ul className="list-disc pl-6">
+                {participantesSemPalpite.map((p) => (
+                  <li key={p.id}>
+                    {p.apelido || p.nome_completo}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
 
           <p>
             <strong>Pontos:</strong> {participante.pontos ?? 0}
