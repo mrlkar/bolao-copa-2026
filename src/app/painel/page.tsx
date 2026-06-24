@@ -290,7 +290,9 @@ if (participanteAtualizado) {
     if (!participante) return null;
     return (
       pontuacoes.find(
-        (p) => p.jogo_id === jogoId && p.participante_id === participante.id
+        (p) =>
+          Number(p.jogo_id) === Number(jogoId) &&
+          Number(p.participante_id) === Number(participante.id)
       ) || null
     );
   }
