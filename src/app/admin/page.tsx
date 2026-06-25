@@ -218,31 +218,14 @@ export default function AdminPage() {
       );
     }
 
-    const { data: todasPontuacoes } = await supabase
-  .from("pontuacoes")
-  .select("*")
-  .range(0, 10000);
+    const { error: erroRecalculo } = await supabase.rpc(
+  "recalcular_totais_participantes"
+);
 
-    for (const participante of participantes) {
-      const pontosParticipante = (todasPontuacoes || []).filter(
-        (p) => p.participante_id === participante.id
-      );
-
-      const totalPontos = pontosParticipante.reduce(
-        (soma, p) => soma + (p.pontos || 0),
-        0
-      );
-
-      const totalCravadas = pontosParticipante.filter((p) => p.cravada).length;
-
-      await supabase
-        .from("participantes")
-        .update({
-          pontos: totalPontos,
-          cravadas: totalCravadas,
-        })
-        .eq("id", participante.id);
-    }
+if (erroRecalculo) {
+  setMensagem("Erro ao recalcular totais: " + erroRecalculo.message);
+  return;
+}
 
     setMensagem("Resultado salvo e pontuação recalculada!");
     carregarDados();
