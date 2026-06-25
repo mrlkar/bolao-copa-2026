@@ -218,7 +218,10 @@ export default function AdminPage() {
       );
     }
 
-    const { data: todasPontuacoes } = await supabase.from("pontuacoes").select("*");
+    const { data: todasPontuacoes } = await supabase
+  .from("pontuacoes")
+  .select("*")
+  .range(0, 10000);
 
     for (const participante of participantes) {
       const pontosParticipante = (todasPontuacoes || []).filter(
